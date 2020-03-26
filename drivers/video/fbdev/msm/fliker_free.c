@@ -25,6 +25,7 @@
 #include <linux/rtc.h>
 #include <linux/timer.h>
 #include <linux/kernel.h>
+#include <linux/delay.h>
 
 #include "fliker_free.h"
 #include "mdss_fb.h"
@@ -42,7 +43,7 @@
 struct mdss_panel_data *pdata;
 struct mdss_mdp_ctl *fb0_ctl = 0;
 u32 copyback = 0;
-static bool enabled;
+static bool pcc_enabled;
 static bool mdss_backlight_enable = false;
 
 static void fliker_free_push_pcc(int r, int g, int b)
@@ -52,7 +53,7 @@ static void fliker_free_push_pcc(int r, int g, int b)
 	memset(&pcc_config, 0, sizeof(struct mdp_pcc_cfg_data));
 	pcc_config.version = mdp_pcc_v1_7;
 	pcc_config.block = MDP_LOGICAL_BLOCK_DISP_0;
-	pcc_config.ops = enabled ?
+	pcc_config.ops = pcc_enabled ?
 		MDP_PP_OPS_WRITE | MDP_PP_OPS_ENABLE :
 			MDP_PP_OPS_WRITE | MDP_PP_OPS_DISABLE;
 	payload = kzalloc(sizeof(struct mdp_pcc_data_v1_7),GFP_USER);
@@ -106,7 +107,18 @@ void set_fliker_free(bool enabled)
 {
 	mdss_backlight_enable = enabled;
 	pdata = dev_get_platdata(&get_mfd_copy()->pdev->dev);
-	pdata->set_backlight(pdata, mdss_panel_calc_backlight(get_bkl_lvl()));
+	if (enabled){
+		pcc_enabled = enabled;
+		mdss_panel_calc_backlight(get_bkl_lvl());
+		msleep(100);
+		pdata->set_backlight(pdata, mdss_panel_calc_backlight(get_bkl_lvl()));
+	}else{
+		pdata->set_backlight(pdata,get_bkl_lvl());
+		msleep(100);
+		pcc_enabled = enabled;
+		mdss_panel_calc_backlight(get_bkl_lvl());
+	}
+	
 } 
 
 void set_elvss_off_threshold(int value)
