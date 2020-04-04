@@ -33,6 +33,10 @@
 
 #include "mdss_mdp.h"
 
+#ifdef CONFIG_FLIKER_FREE
+#include "fliker_free.h"
+#endif
+
 #define DEF_PCC 0x100
 #define DEF_PA 0xff
 #define PCC_ADJ 0x80
@@ -149,6 +153,10 @@ static uint32_t igc_Table_RGB[IGC_LUT_ENTRIES] = {
 	48, 32, 16, 0
 };
 
+#ifdef CONFIG_FLIKER_FREE
+struct kcal_lut_data *lut_cpy;
+#endif
+
 struct mdss_mdp_ctl *fb0_ctl = 0;
 
 static int mdss_mdp_kcal_store_fb0_ctl(void)
@@ -234,6 +242,21 @@ static void mdss_mdp_kcal_update_pcc(struct kcal_lut_data *lut_data)
 	kfree(payload);
 }
 
+#ifdef CONFIG_FLIKER_FREE
+void kcal_ext_apply_values(int red, int green, int blue)
+{
+	lut_cpy->red = red;
+	lut_cpy->green = green;
+	lut_cpy->blue = blue;
+	pr_debug("red=%d,green=%d,blue=%d\n",red,green,blue);
+	if (mdss_mdp_kcal_is_panel_on()){
+		mdss_mdp_kcal_update_pcc(lut_cpy);
+	}
+	else{
+		lut_cpy->queue_changes = true;
+	}
+}
+#endif
 static void mdss_mdp_kcal_update_pa(struct kcal_lut_data *lut_data)
 {
 	u32 copyback = 0;
@@ -641,6 +664,10 @@ static int kcal_ctrl_probe(struct platform_device *pdev)
 		pr_err("%s: unable to register fb notifier\n", __func__);
 		return ret;
 	}
+#endif
+
+#ifdef CONFIG_FLIKER_FREE
+	lut_cpy = lut_data;
 #endif
 
 	ret = device_create_file(&pdev->dev, &dev_attr_kcal);

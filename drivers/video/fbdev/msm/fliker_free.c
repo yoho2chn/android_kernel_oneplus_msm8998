@@ -41,13 +41,14 @@
 #include "mdss_mdp.h"
 
 struct mdss_panel_data *pdata;
-struct mdss_mdp_ctl *fb0_ctl = 0;
+
 struct mdp_pcc_cfg_data pcc_config;
 struct mdp_pcc_data_v1_7 *payload;
 u32 copyback = 0;
 static bool pcc_enabled = false;
 static bool mdss_backlight_enable = false;
 
+#ifndef CONFIG_FB_MSM_MDSS_KCAL_CTRL
 static int fliker_free_push_pcc(int temp)
 {
 	pcc_config.ops = pcc_enabled ?
@@ -63,27 +64,29 @@ static int fliker_free_push_pcc(int temp)
 	
 	return mdss_mdp_pcc_config(get_mfd_copy(), &pcc_config, &copyback);
 }
+#endif
 
 static int set_brightness(int backlight)
 {
-    int temp = backlight * (MAX_SCALE - MIN_SCALE) / elvss_off_threshold + MIN_SCALE;
+    int temp = backlight * (MAX_SCALE - MIN_SCALE) / elvss_off_threshold + MIN_SCALE;	//b*(32768-5120)/370 + 5120
 	temp = clamp_t(int, temp, MIN_SCALE, MAX_SCALE);
-	#if FLIKER_FREE_KLAPSE
-    klapse_kcal_push(temp,temp,temp);
+#ifdef CONFIG_FB_MSM_MDSS_KCAL_CTRL
+    kcal_ext_apply_values(temp/0x80, temp/0x80, temp/0x80);
 	return 0;
-	#else 
+#else 
 	return fliker_free_push_pcc(temp);
-	#endif
+#endif
 }
 
 u32 mdss_panel_calc_backlight(u32 bl_lvl)
 {
-	if (mdss_backlight_enable && bl_lvl != 0 && bl_lvl < elvss_off_threshold) {
-        	printk("fliker free mode on\n");
-		printk("elvss_off = %d\n", elvss_off_threshold);
+	if (mdss_backlight_enable && bl_lvl >= 0 && bl_lvl < elvss_off_threshold) {
+        pr_err("fliker free mode on\n");
+		pr_err("elvss_off = %d, backlight_level = %d\n", elvss_off_threshold,bl_lvl);
 		if(!set_brightness(bl_lvl))
 			return elvss_off_threshold;
 	}else{
+        pr_err("elvss_off_threshold=%d\n",elvss_off_threshold);
 		if(!set_brightness(elvss_off_threshold))
 			return bl_lvl;
 	}

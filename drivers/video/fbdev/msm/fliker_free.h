@@ -22,15 +22,11 @@
 #ifndef _FLIKER_FREE_H
 #define _FLIKER_FREE_H
 
-#define FLIKER_FREE_KLAPSE 0
+#define MAX_SCALE 32768 /* Maximum value of RGB possible */
+#define MIN_SCALE 5120 /* Minimum value of RGB recommended */
 
-
-#if FLIKER_FREE_KLAPSE
- #include <linux/klapse.h>
-#else
- #define MAX_SCALE 32768 /* Maximum value of RGB possible */
-
- #define MIN_SCALE 5120 /* Minimum value of RGB recommended */
+#ifdef CONFIG_FB_MSM_MDSS_KCAL_CTRL
+void kcal_ext_apply_values(int red, int green, int blue);
 #endif
 
 /* Constants - Customize as needed */
